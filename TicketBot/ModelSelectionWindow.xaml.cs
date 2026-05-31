@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -30,7 +31,6 @@ namespace TicketBot
 
         private void SetStatus(string text, Brush color)
         {
-            // Dispatcher nicht nötig beim normalen Loaded/Await-Flow, aber sicherheitshalber:
             Dispatcher.Invoke(() =>
             {
                 TxtStatus.Text = text;
@@ -49,14 +49,12 @@ namespace TicketBot
 
                 _models.Clear();
 
-                // Wenn Ollama Modelle liefert, zeige diese (dynamisch). Sonst DefaultCandidates.
                 var candidates = installed.Length > 0
                     ? installed.Distinct(StringComparer.OrdinalIgnoreCase).ToArray()
                     : DefaultCandidates;
 
                 foreach (var id in candidates)
                 {
-                    // Wenn candidates aus installed stammen, ist Installed true. Für DefaultCandidates locker prüfen.
                     bool isInstalled = installed.Any(s => !string.IsNullOrEmpty(s) && s.IndexOf(id, StringComparison.OrdinalIgnoreCase) >= 0);
                     _models.Add(new ModelItem { Id = id, Installed = isInstalled });
                 }
@@ -85,7 +83,6 @@ namespace TicketBot
                 Debug.WriteLine("Fehler beim Laden installierter Modelle: " + ex);
                 SetStatus("Ollama nicht erreichbar: " + ex.Message, Brushes.Red);
 
-                // Fallback
                 _models.Clear();
                 foreach (var id in DefaultCandidates)
                 {
@@ -102,41 +99,81 @@ namespace TicketBot
 
         private async Task<string[]> QueryOllamaInstalledModelsAsync()
         {
-            try
+            // Liste bekannter/vernünftiger Endpunkte ausprobieren
+            var endpoints = new[]
             {
-                var url = "http://localhost:11434/models";
-                var resp = await _http.GetAsync(url);
-                resp.EnsureSuccessStatusCode();
+                "http://localhost:11434/models",
+                "http://localhost:11434/v1/models",
+                "http://localhost:11434/api/models"
+            };
 
-                using var stream = await resp.Content.ReadAsStreamAsync();
-                using var doc = await JsonDocument.ParseAsync(stream);
-
-                // Flexible Extraktion: Array an Root oder nested unter "models"/"data"
-                if (doc.RootElement.ValueKind == JsonValueKind.Array)
-                {
-                    return ExtractStringsFromArray(doc.RootElement);
-                }
-
-                if (doc.RootElement.ValueKind == JsonValueKind.Object)
-                {
-                    if (doc.RootElement.TryGetProperty("models", out var modelsEl) && modelsEl.ValueKind == JsonValueKind.Array)
-                        return ExtractStringsFromArray(modelsEl);
-
-                    if (doc.RootElement.TryGetProperty("data", out var dataEl) && dataEl.ValueKind == JsonValueKind.Array)
-                        return ExtractStringsFromArray(dataEl);
-
-                    // Versuch: wenn Objekt selbst enthält id/model/name
-                    var single = TryExtractStringFromObject(doc.RootElement);
-                    if (!string.IsNullOrEmpty(single)) return new[] { single };
-                }
-
-                return Array.Empty<string>();
-            }
-            catch (Exception ex)
+            foreach (var url in endpoints)
             {
-                Debug.WriteLine("QueryOllamaInstalledModelsAsync failed: " + ex);
-                throw;
+                try
+                {
+                    Debug.WriteLine($"Versuche Ollama-Endpunkt: {url}");
+                    var resp = await _http.GetAsync(url);
+
+                    // 404: probiere den nächsten Endpunkt
+                    if (resp.StatusCode == HttpStatusCode.NotFound)
+                    {
+                        var body = await resp.Content.ReadAsStringAsync();
+                        Debug.WriteLine($"404 von {url}. Body: {body}");
+                        continue;
+                    }
+
+                    // andere Fehler: protokollieren und weiterwerfen, damit LoadInstalledModelsAsync den Fehler anzeigt
+                    if (!resp.IsSuccessStatusCode)
+                    {
+                        var body = await resp.Content.ReadAsStringAsync();
+                        Debug.WriteLine($"Fehler von {url}: {(int)resp.StatusCode} {resp.ReasonPhrase}. Body: {body}");
+                        throw new HttpRequestException($"Ollama antwortete mit {(int)resp.StatusCode} {resp.ReasonPhrase} für {url}");
+                    }
+
+                    // Erfolg: parse und zurückgeben
+                    using var stream = await resp.Content.ReadAsStreamAsync();
+                    using var doc = await JsonDocument.ParseAsync(stream);
+
+                    if (doc.RootElement.ValueKind == JsonValueKind.Array)
+                    {
+                        return ExtractStringsFromArray(doc.RootElement);
+                    }
+
+                    if (doc.RootElement.ValueKind == JsonValueKind.Object)
+                    {
+                        if (doc.RootElement.TryGetProperty("models", out var modelsEl) && modelsEl.ValueKind == JsonValueKind.Array)
+                            return ExtractStringsFromArray(modelsEl);
+
+                        if (doc.RootElement.TryGetProperty("data", out var dataEl) && dataEl.ValueKind == JsonValueKind.Array)
+                            return ExtractStringsFromArray(dataEl);
+
+                        var single = TryExtractStringFromObject(doc.RootElement);
+                        if (!string.IsNullOrEmpty(single)) return new[] { single };
+                    }
+
+                    return Array.Empty<string>();
+                }
+                catch (HttpRequestException hre)
+                {
+                    Debug.WriteLine($"HTTP-RequestException beim Aufruf von {url}: {hre}");
+                    // bei Netzwerkfehlern abbrechen, da es kein 404 ist (z. B. Verbindung, Timeout)
+                    throw;
+                }
+                catch (TaskCanceledException tce)
+                {
+                    Debug.WriteLine($"Timeout beim Aufruf von {url}: {tce}");
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Allgemeiner Fehler bei {url}: {ex}");
+                    throw;
+                }
             }
+
+            // Alle Endpunkte lieferten 404 -> leeres Ergebnis (LoadInstalledModelsAsync zeigt Fallback und Status)
+            Debug.WriteLine("Alle bekannten Endpunkte gaben 404 zurück; benutze DefaultCandidates.");
+            return Array.Empty<string>();
         }
 
         private static string[] ExtractStringsFromArray(JsonElement arrayEl)
@@ -164,7 +201,6 @@ namespace TicketBot
             if (obj.TryGetProperty("model", out var mProp) && mProp.ValueKind == JsonValueKind.String) return mProp.GetString();
             if (obj.TryGetProperty("name", out var nProp) && nProp.ValueKind == JsonValueKind.String) return nProp.GetString();
 
-            // Falls Objekt untypisch ist, versuche, erste string-Property zu nehmen
             foreach (var prop in obj.EnumerateObject())
             {
                 if (prop.Value.ValueKind == JsonValueKind.String) return prop.Value.GetString();
