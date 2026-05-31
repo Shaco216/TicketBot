@@ -16,7 +16,10 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" FontWeight="Bold" FontSize="14" Text="Wähle ein LLM (Ollama)" Margin="0,0,0,8"/>
+        <StackPanel Grid.Row="0" Margin="0,0,0,8">
+            <TextBlock FontWeight="Bold" FontSize="14" Text="Wähle ein LLM (Ollama)"/>
+            <TextBlock x:Name="TxtStatus" FontSize="11" Foreground="Gray" Text="Status: Unbekannt" />
+        </StackPanel>
 
         <ListBox x:Name="LstModels" Grid.Row="1" Margin="0,0,0,8" SelectionMode="Single">
             <ListBox.ItemTemplate>
