@@ -1,9 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.37012.4 d17.14
+VisualStudioVersion = 17.14.37012.4
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TicketBot", "TicketBot\TicketBot.csproj", "{5B1482FD-8DAA-40A7-A445-BC5BFCBDDC20}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OolamaCommunication", "OolamaCommunication\OolamaCommunication.csproj", "{39D78CD2-114E-49BC-BFC8-D89898C89074}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OolamaService", "OolamaService\OolamaService.csproj", "{9708CFDB-3AB0-41D3-83C1-2E7E443F182C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +19,14 @@ Global
 		{5B1482FD-8DAA-40A7-A445-BC5BFCBDDC20}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5B1482FD-8DAA-40A7-A445-BC5BFCBDDC20}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5B1482FD-8DAA-40A7-A445-BC5BFCBDDC20}.Release|Any CPU.Build.0 = Release|Any CPU
+		{39D78CD2-114E-49BC-BFC8-D89898C89074}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{39D78CD2-114E-49BC-BFC8-D89898C89074}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{39D78CD2-114E-49BC-BFC8-D89898C89074}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{39D78CD2-114E-49BC-BFC8-D89898C89074}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9708CFDB-3AB0-41D3-83C1-2E7E443F182C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9708CFDB-3AB0-41D3-83C1-2E7E443F182C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9708CFDB-3AB0-41D3-83C1-2E7E443F182C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9708CFDB-3AB0-41D3-83C1-2E7E443F182C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

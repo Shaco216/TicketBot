@@ -11,6 +11,12 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.SemanticKernel" Version="1.77.0" />
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.77.0-alpha" />
+  </ItemGroup>  <ItemGroup>
+    <ProjectReference Include="..\OolamaService\OolamaService.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Pfad\Zum\OllamaServiceProjekt\OllamaService.csproj" />
   </ItemGroup>
 
 </Project>
