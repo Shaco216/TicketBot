@@ -36,7 +36,6 @@
         </ListBox>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
-            <!-- PlaceholderText wird von WPF nicht unterstützt. Workaround mit Watermark-ähnlichem Verhalten: -->
             <Grid>
                 <TextBox x:Name="TxtCustomModel" Width="240" Height="26" VerticalContentAlignment="Center" Margin="0,0,8,0"/>
                 <TextBlock Text="Eigenes Modell eingeben..." 
@@ -51,7 +50,11 @@
 
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Abbrechen" Width="90" Margin="0,0,8,0" Click="BtnCancel_Click"/>
-            <Button Content="Start" Width="90" Click="BtnStart_Click"/>
+            <Button x:Name="BtnInstall" Content="Installieren" Width="90" Margin="0,0,8,0" Click="BtnInstall_Click"
+                    Visibility="{Binding SelectedItem.Installed, ElementName=LstModels, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}"
+                    IsEnabled="{Binding SelectedItem, ElementName=LstModels, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}"/>
+            <Button x:Name="BtnStart" Content="Start" Width="90" Click="BtnStart_Click"
+                    IsEnabled="{Binding SelectedItem.Installed, ElementName=LstModels}"/>
         </StackPanel>
     </Grid>
 </Window>

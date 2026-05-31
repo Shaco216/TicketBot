@@ -1,13 +1,11 @@
-﻿using System;
-using System.Collections.ObjectModel;
-using System.Linq;
+﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
-using System.Diagnostics;
 
 namespace TicketBot
 {
@@ -49,9 +47,12 @@ namespace TicketBot
 
                 _models.Clear();
 
-                var candidates = installed.Length > 0
-                    ? installed.Distinct(StringComparer.OrdinalIgnoreCase).ToArray()
-                    : DefaultCandidates;
+                // Änderung: Zeige alle möglichen Kandidaten (DefaultCandidates) UND zusätzlich alle
+                // von Ollama zurückgelieferten Modelle. So werden nicht-installierte, aber mögliche Modelle angezeigt.
+                var candidates = DefaultCandidates
+                    .Concat(installed)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
 
                 foreach (var id in candidates)
                 {
@@ -61,7 +62,7 @@ namespace TicketBot
 
                 if (installed.Length > 0)
                 {
-                    SetStatus($"Ollama läuft — {installed.Length} Modell(e) gefunden", Brushes.Green);
+                    SetStatus($"Ollama läuft — {installed.Length} installierte Modell(e); zeige {candidates.Length} Kandidat(en)", Brushes.Green);
                 }
                 else
                 {
@@ -99,7 +100,6 @@ namespace TicketBot
 
         private async Task<string[]> QueryOllamaInstalledModelsAsync()
         {
-            // Liste bekannter/vernünftiger Endpunkte ausprobieren
             var endpoints = new[]
             {
                 "http://localhost:11434/models",
@@ -114,7 +114,6 @@ namespace TicketBot
                     Debug.WriteLine($"Versuche Ollama-Endpunkt: {url}");
                     var resp = await _http.GetAsync(url);
 
-                    // 404: probiere den nächsten Endpunkt
                     if (resp.StatusCode == HttpStatusCode.NotFound)
                     {
                         var body = await resp.Content.ReadAsStringAsync();
@@ -122,7 +121,6 @@ namespace TicketBot
                         continue;
                     }
 
-                    // andere Fehler: protokollieren und weiterwerfen, damit LoadInstalledModelsAsync den Fehler anzeigt
                     if (!resp.IsSuccessStatusCode)
                     {
                         var body = await resp.Content.ReadAsStringAsync();
@@ -130,7 +128,6 @@ namespace TicketBot
                         throw new HttpRequestException($"Ollama antwortete mit {(int)resp.StatusCode} {resp.ReasonPhrase} für {url}");
                     }
 
-                    // Erfolg: parse und zurückgeben
                     using var stream = await resp.Content.ReadAsStreamAsync();
                     using var doc = await JsonDocument.ParseAsync(stream);
 
@@ -156,7 +153,6 @@ namespace TicketBot
                 catch (HttpRequestException hre)
                 {
                     Debug.WriteLine($"HTTP-RequestException beim Aufruf von {url}: {hre}");
-                    // bei Netzwerkfehlern abbrechen, da es kein 404 ist (z. B. Verbindung, Timeout)
                     throw;
                 }
                 catch (TaskCanceledException tce)
@@ -171,7 +167,6 @@ namespace TicketBot
                 }
             }
 
-            // Alle Endpunkte lieferten 404 -> leeres Ergebnis (LoadInstalledModelsAsync zeigt Fallback und Status)
             Debug.WriteLine("Alle bekannten Endpunkte gaben 404 zurück; benutze DefaultCandidates.");
             return Array.Empty<string>();
         }
@@ -209,6 +204,76 @@ namespace TicketBot
             return null;
         }
 
+        private async void BtnInstall_Click(object sender, RoutedEventArgs e)
+        {
+            if (LstModels.SelectedItem is not ModelItem mi) return;
+            await InstallModelAsync(mi);
+        }
+
+        private async Task InstallModelAsync(ModelItem model)
+        {
+            // Deaktivieren UI
+            LstModels.IsEnabled = false;
+            BtnInstall.IsEnabled = false;
+            BtnStart.IsEnabled = false;
+
+            SetStatus($"Installiere {model.Id} …", Brushes.Gray);
+
+            try
+            {
+                // Versuche Ollama-CLI zu verwenden: "ollama pull <model>"
+                var psi = new ProcessStartInfo("ollama", $"pull {model.Id}")
+                {
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var proc = Process.Start(psi);
+                if (proc == null)
+                    throw new InvalidOperationException("Konnte den Installationsprozess nicht starten.");
+
+                var outTask = proc.StandardOutput.ReadToEndAsync();
+                var errTask = proc.StandardError.ReadToEndAsync();
+
+                await proc.WaitForExitAsync();
+
+                var stdout = await outTask;
+                var stderr = await errTask;
+
+                Debug.WriteLine($"ollama pull stdout: {stdout}");
+                Debug.WriteLine($"ollama pull stderr: {stderr}");
+
+                if (proc.ExitCode == 0)
+                {
+                    model.Installed = true; // löst PropertyChanged aus
+                    SetStatus($"Installation von {model.Id} abgeschlossen", Brushes.Green);
+                }
+                else
+                {
+                    SetStatus($"Installation fehlgeschlagen: {stderr ?? "(keine Meldung)"}", Brushes.Red);
+                }
+            }
+            catch (System.ComponentModel.Win32Exception w32ex)
+            {
+                // Executable nicht gefunden
+                Debug.WriteLine("Win32Exception beim Starten von ollama: " + w32ex);
+                SetStatus("Konnte 'ollama' nicht finden. Bitte Ollama-CLI installieren oder in PATH legen.", Brushes.Red);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("InstallModelAsync error: " + ex);
+                SetStatus("Fehler bei der Installation: " + ex.Message, Brushes.Red);
+            }
+            finally
+            {
+                LstModels.IsEnabled = true;
+                BtnInstall.IsEnabled = true;
+                BtnStart.IsEnabled = true;
+            }
+        }
+
         private void BtnUseCustom_Click(object sender, RoutedEventArgs e)
         {
             var custom = TxtCustomModel.Text?.Trim();
@@ -242,10 +307,35 @@ namespace TicketBot
             Close();
         }
 
-        private class ModelItem
+        private class ModelItem : INotifyPropertyChanged
         {
-            public string Id { get; set; } = string.Empty;
-            public bool Installed { get; set; }
+            private string _id = string.Empty;
+            private bool _installed;
+
+            public string Id
+            {
+                get => _id;
+                set
+                {
+                    if (_id == value) return;
+                    _id = value;
+                    OnPropertyChanged(nameof(Id));
+                }
+            }
+
+            public bool Installed
+            {
+                get => _installed;
+                set
+                {
+                    if (_installed == value) return;
+                    _installed = value;
+                    OnPropertyChanged(nameof(Installed));
+                }
+            }
+
+            public event PropertyChangedEventHandler? PropertyChanged;
+            private void OnPropertyChanged(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
     }
 
