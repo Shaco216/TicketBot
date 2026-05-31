@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
+using System.Diagnostics;
 
 namespace TicketBot
 {
@@ -15,18 +16,14 @@ namespace TicketBot
     public partial class ModelSelectionWindow : Window
     {
         private readonly ObservableCollection<ModelItem> _models = new();
-        private static readonly string[] CandidateModels = new[] { "llama3", "llama2", "gpt-4o", "falcon", "llama_cpp" };
+        private static readonly string[] DefaultCandidates = new[] { "llama3", "llama2", "gpt-4o", "falcon", "llama_cpp" };
         private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(5) };
 
         public ModelSelectionWindow()
         {
             InitializeComponent();
 
-            // Converter-Registrierung (kleiner, lokaler Ersatz statt separater Resource-Datei)
-            var boolToBrush = new System.Windows.Data.Binding
-            {
-                Converter = new BoolToBrushConverter()
-            };
+            // Unnötige lokale Binding-Erzeugung entfernt.
 
             LstModels.ItemsSource = _models;
 
@@ -38,17 +35,28 @@ namespace TicketBot
             try
             {
                 var installed = await QueryOllamaInstalledModelsAsync();
+                Debug.WriteLine("Ollama installed models: " + string.Join(", ", installed));
+
                 _models.Clear();
 
-                foreach (var id in CandidateModels.Distinct())
+                // Dynamische Kandidaten: Wenn Ollama Modelle liefert, nutze diese als Kandidaten.
+                // Ansonsten auf DefaultCandidates zurückfallen.
+                var candidates = installed.Length > 0
+                    ? installed.Distinct(StringComparer.OrdinalIgnoreCase).ToArray()
+                    : DefaultCandidates;
+
+                foreach (var id in candidates)
                 {
-                    _models.Add(new ModelItem { Id = id, Installed = installed.Contains(id, StringComparer.OrdinalIgnoreCase) });
+                    // Wenn candidates aus installed stammen, ist Installed immer true.
+                    // Für DefaultCandidates prüfen wir, ob ein installiertes Modell den Kandidaten enthält (locker matchen).
+                    bool isInstalled = installed.Any(s => !string.IsNullOrEmpty(s) && s.IndexOf(id, StringComparison.OrdinalIgnoreCase) >= 0);
+                    _models.Add(new ModelItem { Id = id, Installed = isInstalled });
                 }
 
-                // Falls keine Kandidaten installiert sind, Zeige trotzdem die Liste und markiere nichts
+                // Falls keine Kandidaten vorhanden sind (sehr unwahrscheinlich), zeige Fallback
                 if (_models.Count == 0)
                 {
-                    foreach (var id in CandidateModels)
+                    foreach (var id in DefaultCandidates)
                     {
                         _models.Add(new ModelItem { Id = id, Installed = false });
                     }
@@ -56,11 +64,13 @@ namespace TicketBot
 
                 LstModels.SelectedIndex = 0;
             }
-            catch
+            catch (Exception ex)
             {
-                // Falls Ollama nicht erreichbar: Zeige Kandidaten als nicht installiert
+                Debug.WriteLine("Fehler beim Laden installierter Modelle: " + ex);
+
+                // Falls Ollama nicht erreichbar: Zeige DefaultCandidates als nicht installiert
                 _models.Clear();
-                foreach (var id in CandidateModels)
+                foreach (var id in DefaultCandidates)
                 {
                     _models.Add(new ModelItem { Id = id, Installed = false });
                 }
