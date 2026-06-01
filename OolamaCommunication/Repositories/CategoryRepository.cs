@@ -16,14 +16,19 @@ public class CategoryRepository : ICategoryRepository
         _db = db;
     }
 
+    // Erstellt die Tabelle, falls sie nicht existiert
     public async Task CreateTable()
     {
-        const string sql = @"CREATE TABLE Categories (
+        const string sql = @"IF OBJECT_ID(N'dbo.Categories', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Categories (
         Id INT IDENTITY(1,1) PRIMARY KEY,
         Name NVARCHAR(200) NOT NULL,
         Description NVARCHAR(MAX) NULL
-        );";
+    );
+END;";
         if (_db.State != ConnectionState.Open) await ((SqlConnection)_db).OpenAsync();
+        await _db.ExecuteAsync(sql);
     }
 
     public async Task<IEnumerable<Category>> GetAllAsync()

@@ -15,8 +15,4 @@
     <ProjectReference Include="..\OolamaService\OolamaService.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Pfad\Zum\OllamaServiceProjekt\OllamaService.csproj" />
-  </ItemGroup>
-
 </Project>
