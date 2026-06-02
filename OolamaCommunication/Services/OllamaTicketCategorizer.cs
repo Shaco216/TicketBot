@@ -1,12 +1,18 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+//using TicketBot; // Namespace anpassen wenn nötig
+
 namespace OolamaCommunication.Services;
 
-public class OllamaTicketCategorizer : ITicketCategorizer
+public class OllamaTicketCategorizer : IOllamaTicketCategorizer
 {
-    private readonly OllamaService? _ollamaService;
+    private readonly OllamaService? _ollama;
 
-    public OllamaTicketCategorizer(OllamaService? ollamaService = null)
+    public OllamaTicketCategorizer(OllamaService? ollama = null)
     {
-        _ollamaService = ollamaService;
+        _ollama = ollama;
     }
 
     public async Task<string> CategorizeAsync(string subject, string body, IEnumerable<string> categories)
@@ -14,15 +20,13 @@ public class OllamaTicketCategorizer : ITicketCategorizer
         var list = categories?.Where(c => !string.IsNullOrWhiteSpace(c)).Select(c => c.Trim()).ToList()
                    ?? new List<string> { "Unbekannt" };
 
-        // 1) Wenn Ollama vorhanden: versuche LLM -> exakten Kategorienamen zurückgeben
-        if (_ollamaService != null)
+        if (_ollama != null)
         {
-            var prompt = $"Du bist ein Ticket-Kategorisierer. Verfügbare Kategorien: {string.Join(", ", list)}\n\n" +
-                         $"E-Mail-Betreff: {subject}\n\nE-Mail-Inhalt: {body}\n\n" +
-                         "Antworte nur mit exakt einem Kategorienamen aus der Liste, ohne zusätzliche Erklärungen.";
+            var prompt = $"Verfügbare Kategorien: {string.Join(", ", list)}\n\nBetreff: {subject}\n\nInhalt: {body}\n\n" +
+                         "Antworte nur mit genau einer Kategorie aus der Liste.";
             try
             {
-                var resp = await _ollamaService.GetResponseAsync(prompt);
+                var resp = await _ollama.GetResponseAsync(prompt);
                 if (!string.IsNullOrWhiteSpace(resp))
                 {
                     var first = resp.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)[0].Trim().Trim('"');
@@ -32,11 +36,11 @@ public class OllamaTicketCategorizer : ITicketCategorizer
             }
             catch
             {
-                // LLM-Ausfall: Fallthrough zu Fallback-Logik
+                // Fallback weiter unten
             }
         }
 
-        // 2) Keyword-Fallback: simple Heuristik auf Basis von Vorkommen
+        // Fallback: Keyword- und Heuristik-basierte Einordnung
         var text = (subject + " " + body).ToLowerInvariant();
         foreach (var cat in list)
         {
@@ -44,7 +48,6 @@ public class OllamaTicketCategorizer : ITicketCategorizer
             if (text.Contains(key)) return cat;
         }
 
-        // 3) Best-effort: match nach Wortüberschneidung
         var words = text.Split(new[] { ' ', '\r', '\n', '\t', '.', ',', ';', ':' }, StringSplitOptions.RemoveEmptyEntries);
         string best = list.First();
         int bestScore = -1;

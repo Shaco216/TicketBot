@@ -31,12 +31,12 @@ public class OllamaEmailDtoRepository : IOllamaEmailDtoRepository
         await _db.ExecuteAsync(sql);
     }
 
-    public async Task InsertAsync(string sender, string receiver, string subject, string body)
+    public async Task<bool> InsertAsync(string from, string to, string subject, string body)
     {
-        const string sql = @"Insert Into dbo.OllamaEmailDtos (Id, From, To, Subject, Body, ReceivedAt)"
-                         + "Values (@Id, @From, @To, @Subject, @Body, @ReceivedAt)";
+        const string sql = @"Insert Into dbo.OllamaEmailDtos (From, To, Subject, Body)"
+                         + "Values (@from, @to, @subject, @body)";
         if (_db.State != ConnectionState.Open) await ((SqlConnection)_db).OpenAsync();
-        await _db.ExecuteAsync(sql);
+        return (await _db.ExecuteAsync(sql)) == 1;
     }
 
     public async Task<IEnumerable<ReceivedEmailDto>> GetAllAsync()

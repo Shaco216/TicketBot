@@ -31,7 +31,7 @@ public class OllamaEmailController : ControllerBase
         if (dto == null) return BadRequest("Payload missing.");
 
         // Persistieren
-        var saved = await _emailRepo.CreateAsync(dto);
+        bool saved = await _emailRepo.InsertAsync(dto.From,dto.To,dto.Subject,dto.Body);
 
         // Kategorien aus appsettings.json (alternativ: aus DB/Repository laden)
         var categories = _configuration.GetSection("TicketCategories").Get<string[]>()

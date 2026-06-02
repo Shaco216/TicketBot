@@ -8,6 +8,6 @@ namespace OolamaCommunication.Repositories
         Task<IEnumerable<ReceivedEmailDto>> GetAllAsync();
         Task<IEnumerable<ReceivedEmailDto>> GetByReceiverAsync(string receiver);
         Task<IEnumerable<ReceivedEmailDto>> GetBySenderAsync(string sender);
-        Task InsertAsync(string sender, string receiver, string subject, string body);
+        Task<bool> InsertAsync(string from, string to, string subject, string body);
     }
 }
