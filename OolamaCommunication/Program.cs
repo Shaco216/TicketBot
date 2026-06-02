@@ -1,4 +1,5 @@
 using Microsoft.Data.SqlClient;
+using OolamaCommunication.Extensions;
 using OolamaCommunication.Repositories;
 using System.Data;
 
@@ -9,6 +10,8 @@ internal class Program
         var builder = WebApplication.CreateBuilder(args);
 
         // Add services to the container.
+
+        builder.Services.AddOllamaServiceFromConfig(builder.Configuration);
 
         builder.Services.AddControllers();
         // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -23,6 +26,7 @@ internal class Program
 
         // Repository
         builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+        builder.Services.AddScoped<IOllamaEmailDtoRepository, OllamaEmailDtoRepository>();
 
         var app = builder.Build();
         
