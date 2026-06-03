@@ -31,10 +31,10 @@ public class OllamaEmailDtoRepository : IOllamaEmailDtoRepository
         await _db.ExecuteAsync(sql);
     }
 
-    public async Task<bool> InsertAsync(string from, string to, string subject, string body)
+    public async Task<bool> InsertAsync(Guid emailId,string from, string to, string subject, string body)
     {
-        const string sql = @"Insert Into dbo.OllamaEmailDtos (From, To, Subject, Body)"
-                         + "Values (@from, @to, @subject, @body)";
+        const string sql = @"Insert Into dbo.OllamaEmailDtos (Id,From, To, Subject, Body)"
+                         + "Values (@emailId, @from, @to, @subject, @body)";
         if (_db.State != ConnectionState.Open) await ((SqlConnection)_db).OpenAsync();
         return (await _db.ExecuteAsync(sql)) == 1;
     }
@@ -60,4 +60,10 @@ public class OllamaEmailDtoRepository : IOllamaEmailDtoRepository
         return await _db.QueryAsync<ReceivedEmailDto>(sql, new { Receiver = receiver });
     }
 
+    public async Task<ReceivedEmailDto?> GetByIdAsync(Guid id)
+    {
+        const string sql ="SELECT Id, From, To, Subject, Body, ReceivedAt FROM dbo.OllamaEmailDtos WHERE Id = @Id";
+        if (_db.State != ConnectionState.Open) await ((SqlConnection)_db).OpenAsync();
+        return await _db.QueryFirstOrDefaultAsync<ReceivedEmailDto>(sql, new { Id = id });
+    }
 }

@@ -1,7 +1,7 @@
 using Microsoft.Data.SqlClient;
-using OolamaCommunication;
 using OolamaCommunication.Repositories;
 using System.Data;
+using OolamaCommunication.Services;
 
 internal class Program
 {
@@ -20,12 +20,16 @@ internal class Program
         var connString = builder.Configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' fehlt.");
 
-        // Beispiel 1: DB bereits an Instance angehängt (Name Ticketbot)
+        // IDbConnection
         builder.Services.AddTransient<IDbConnection>(_ => new SqlConnection(connString));
 
         // Repository
         builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
         builder.Services.AddScoped<IOllamaEmailDtoRepository, OllamaEmailDtoRepository>();
+
+        // Registriere den Kategorizer (stellt sicher, dass ICategoryRepository injiziert wird)
+        // Wenn OllamaService ebenfalls per AddOllamaServiceFromConfig registriert ist, wird es injiziert.
+        builder.Services.AddScoped<IOllamaTicketCategorizer, OllamaTicketCategorizer>();
 
         var app = builder.Build();
         

@@ -12,11 +12,11 @@ namespace OolamaCommunication.Controllers;
 [ApiController]
 public class OllamaEmailController : ControllerBase
 {
-    private readonly ITicketCategorizer _categorizer;
+    private readonly IOllamaTicketCategorizer _categorizer;
     private readonly IConfiguration _configuration;
     private readonly IOllamaEmailDtoRepository _emailRepo;
 
-    public OllamaEmailController(ITicketCategorizer categorizer, IConfiguration configuration, IOllamaEmailDtoRepository emailRepo)
+    public OllamaEmailController(IOllamaTicketCategorizer categorizer, IConfiguration configuration, IOllamaEmailDtoRepository emailRepo)
     {
         _categorizer = categorizer;
         _configuration = configuration;
@@ -29,18 +29,27 @@ public class OllamaEmailController : ControllerBase
     public async Task<IActionResult> ReceivedEmailToCreateTicket([FromBody] ReceivedEmailDto dto)
     {
         if (dto == null) return BadRequest("Payload missing.");
-
+        string subject = dto.Subject;
+        string body = dto.Body;
         // Persistieren
-        bool saved = await _emailRepo.InsertAsync(dto.From,dto.To,dto.Subject,dto.Body);
+        Guid emailId = new Guid(); // Generiere eine neue ID für die Email
+        bool saved = await _emailRepo.InsertAsync(emailId, dto.From, dto.To, subject, body);
 
-        // Kategorien aus appsettings.json (alternativ: aus DB/Repository laden)
-        var categories = _configuration.GetSection("TicketCategories").Get<string[]>()
-                         ?? new[] { "Billing", "Technical", "Sales", "General" };
-
-        var category = await _categorizer.CategorizeAsync(saved.Subject ?? string.Empty, saved.Body ?? string.Empty, categories);
-
-        // Rückgabe: gespeicherte Email + Kategorie
-        return Ok(new { email = saved, category });
+        Category category = await _categorizer.CategorizeAsync(emailId, subject, body);
+        ReceivedEmailDto? emailSaved = await _emailRepo.GetByIdAsync(emailId);
+        if (emailSaved == null || saved == false)
+        {
+            return StatusCode(500, "Failed to save email.");
+        }
+        else if (category == null)
+        {
+            return StatusCode(500, "Failed to categorize email.");
+        }
+        else
+        {
+            // Rückgabe: gespeicherte Email + Kategorie
+            return Ok(new { dto, category });
+        }
     }
 
     // GET api/OllamaEmail
