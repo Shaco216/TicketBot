@@ -1,5 +1,5 @@
 using Microsoft.Data.SqlClient;
-using OolamaCommunication.Extensions;
+using OolamaCommunication;
 using OolamaCommunication.Repositories;
 using System.Data;
 
@@ -10,7 +10,6 @@ internal class Program
         var builder = WebApplication.CreateBuilder(args);
 
         // Add services to the container.
-
         builder.Services.AddOllamaServiceFromConfig(builder.Configuration);
 
         builder.Services.AddControllers();
@@ -34,10 +33,12 @@ internal class Program
         // Achtung: Hier wird synchron/awaited ausgeführt — sicherstellen, dass CreateTable async ist
         using (var scope = app.Services.CreateScope())
         {
-            var CategoryRepo = scope.ServiceProvider.GetRequiredService<ICategoryRepository>();
+            ICategoryRepository CategoryRepo = scope.ServiceProvider.GetRequiredService<ICategoryRepository>();
+            IOllamaEmailDtoRepository OllamaEmailRepo = scope.ServiceProvider.GetRequiredService<IOllamaEmailDtoRepository>();
             // Wenn Methode CreateTable async heißt: await repo.CreateTable();
             // Beispiel:
             await CategoryRepo.CreateTable();
+            await OllamaEmailRepo.CreateTable();
         }
 
         // Configure the HTTP request pipeline.
