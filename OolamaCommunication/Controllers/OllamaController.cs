@@ -17,7 +17,7 @@ namespace OolamaCommunication.Controllers
         public async Task<IActionResult> Get()
         {
             IEnumerable<string> modells = await OllamaService.QueryOllamaInstalledModelsAsync();
-            return Ok("Ollama API is running.");
+            return Ok(modells);
         }
     }
 }
