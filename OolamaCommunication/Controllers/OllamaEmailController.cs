@@ -1,10 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using OolamaCommunication.Models;
 using OolamaCommunication.Repositories;
 using OolamaCommunication.Services;
-using System;
-using System.Threading.Tasks;
 
 namespace OolamaCommunication.Controllers;
 
