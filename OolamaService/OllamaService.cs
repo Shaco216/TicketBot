@@ -10,24 +10,16 @@ public class OllamaService
 {
     private readonly Kernel _kernel;
 
+    /// <summary>
+    /// Erstellt und Ändern das Verwendete Modell für die Kommunikation mit Ollama. Es wird davon ausgegangen, dass der Ollama-Server lokal auf Port 11434 läuft.
+    /// </summary>
+    /// <param name="modelId"></param>
     public OllamaService(string modelId)
     {
         // Erstellen Sie den Kernel und verbinden Sie ihn mit Ihrem lokalen Ollama-Server
         var builder = Kernel.CreateBuilder();
         builder.AddOllamaChatCompletion(
             modelId: modelId, // oder Ihr gewünschtes Modell
-            endpoint: new Uri("http://localhost:11434")
-        );
-
-        _kernel = builder.Build();
-    }
-
-    public OllamaService()
-    {
-        // Erstellen Sie den Kernel und verbinden Sie ihn mit Ihrem lokalen Ollama-Server
-        var builder = Kernel.CreateBuilder();
-        builder.AddOllamaChatCompletion(
-            modelId: "llama3", // oder Ihr gewünschtes Modell
             endpoint: new Uri("http://localhost:11434")
         );
 
