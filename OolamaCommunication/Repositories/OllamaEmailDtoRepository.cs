@@ -16,22 +16,22 @@ public class OllamaEmailDtoRepository : IOllamaEmailDtoRepository
 
     public async Task CreateTable()
     {
-        const string sql = @"IF OBJECT_ID(N'dbo.OllamaEmailDtos', N'U') IS NULL"
-                         + @"BEGIN
-                                CREATE TABLE dbo.OllamaEmailDtos (
-                                    Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWSEQUENTIALID(),
-                                    From NVARCHAR(MAX) NOT NULL,
-                                    To NVARCHAR(MAX) NOT NULL,
-                                    Subject NVARCHAR(500) NOT NULL,
-                                    Body NVARCHAR(MAX) NOT NULL,
-                                    ReceivedAt DATETIME2 NOT NULL DEFAULT GETDATE()
-                                );
-                            END;";
+        const string sql = @"IF OBJECT_ID(N'dbo.OllamaEmailDtos', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.OllamaEmailDtos (
+        Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWSEQUENTIALID(),
+        [From] NVARCHAR(MAX) NOT NULL,
+        [To] NVARCHAR(MAX) NOT NULL,
+        Subject NVARCHAR(500) NOT NULL,
+        Body NVARCHAR(MAX) NOT NULL,
+        ReceivedAt DATETIME2 NOT NULL DEFAULT GETDATE()
+    );
+END;";
         if (_db.State != ConnectionState.Open) await ((SqlConnection)_db).OpenAsync();
         await _db.ExecuteAsync(sql);
     }
 
-    public async Task<bool> InsertAsync(Guid emailId,string from, string to, string subject, string body)
+    public async Task<bool> InsertAsync(Guid emailId, string from, string to, string subject, string body)
     {
         const string sql = @"Insert Into dbo.OllamaEmailDtos (Id,From, To, Subject, Body)"
                          + "Values (@emailId, @from, @to, @subject, @body)";
@@ -62,8 +62,15 @@ public class OllamaEmailDtoRepository : IOllamaEmailDtoRepository
 
     public async Task<ReceivedEmailDto?> GetByIdAsync(Guid id)
     {
-        const string sql ="SELECT Id, From, To, Subject, Body, ReceivedAt FROM dbo.OllamaEmailDtos WHERE Id = @Id";
+        const string sql = "SELECT Id, From, To, Subject, Body, ReceivedAt FROM dbo.OllamaEmailDtos WHERE Id = @Id";
         if (_db.State != ConnectionState.Open) await ((SqlConnection)_db).OpenAsync();
         return await _db.QueryFirstOrDefaultAsync<ReceivedEmailDto>(sql, new { Id = id });
+    }
+
+    public Task<bool> DeleteAsync(Guid id)
+    {
+        const string sql = "DELETE FROM dbo.OllamaEmailDtos WHERE Id = @Id";
+        if (_db.State != ConnectionState.Open) ((SqlConnection)_db).Open();
+        return Task.FromResult(_db.Execute(sql, new { Id = id }) == 1);
     }
 }

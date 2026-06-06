@@ -1,46 +1,44 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using OolamaCommunication.Models;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
-namespace OolamaCommunication.Controllers
+namespace OolamaCommunication.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+public class OllamaController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class OllamaController : ControllerBase
+    string _model = string.Empty;
+    OllamaService _ollamaService = new OllamaService("llama3");
+
+    [HttpGet("modells")]
+    public async Task<IActionResult> Get()
     {
-        public OllamaController()
+        IEnumerable<string> modells = await OllamaService.QueryOllamaInstalledModelsAsync();
+        return Ok(modells);
+    }
+
+    [HttpPost("query")]
+    public async Task<IActionResult> Query([FromBody] QueryRequest request)
+    {
+        if (request is null || string.IsNullOrWhiteSpace(request.Model) || string.IsNullOrWhiteSpace(request.Prompt))
         {
+            return BadRequest(new { error = "Model and prompt are required." });
         }
-
-        [HttpGet("modells")]
-        public async Task<IActionResult> Get()
+        // Optional: Validierungen für Temperature/MaxTokens etc. hinzufügen
+        if ( _model != request.Model)
         {
-            IEnumerable<string> modells = await OllamaService.QueryOllamaInstalledModelsAsync();
-            return Ok(modells);
+            _model = request.Model;
+            _ollamaService = new OllamaService(_model);
         }
+        string response = await _ollamaService.GetResponseAsync(request.Prompt);
 
-        [HttpPost("query")]
-        public async Task<IActionResult> Query([FromBody] QueryRequest request)
+        QueryResponse result = new()
         {
-            if (request is null || string.IsNullOrWhiteSpace(request.Model) || string.IsNullOrWhiteSpace(request.Prompt))
-            {
-                return BadRequest(new { error = "Model and prompt are required." });
-            }
+            Model = request.Model,
+            Prompt = request.Prompt,
+            Response = response
+        };
 
-            // Optional: Validierungen für Temperature/MaxTokens etc. hinzufügen
-
-            string response = await OllamaService.QueryOllamaAsync(request.Model, request.Prompt);
-
-            var result = new QueryResponse
-            {
-                Model = request.Model,
-                Prompt = request.Prompt,
-                Response = response
-            };
-
-            return Ok(result);
-        }
+        return Ok(result);
     }
 }

@@ -1,0 +1,7 @@
+Anzeige:
+
+sqlcmd -S "(localdb)\MSSQLLocalDB" -Q "SELECT db.name, mf.physical_name FROM sys.databases db JOIN sys.master_files mf ON db.database_id = mf.database_id WHERE db.name = 'Ticketbot';"
+
+Löschung:
+
+sqlcmd -S "(localdb)\MSSQLLocalDB" -Q "ALTER DATABASE [Ticketbot] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [Ticketbot];"

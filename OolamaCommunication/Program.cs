@@ -10,7 +10,7 @@ internal class Program
         var builder = WebApplication.CreateBuilder(args);
 
         // Add services to the container.
-        builder.Services.AddOllamaServiceFromConfig(builder.Configuration);
+        //builder.Services.AddOllamaServiceFromConfig(builder.Configuration);
 
         builder.Services.AddControllers();
         // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -32,18 +32,6 @@ internal class Program
         builder.Services.AddScoped<IOllamaTicketCategorizer, OllamaTicketCategorizer>();
 
         var app = builder.Build();
-        
-        // Beim Start: Tabelle anlegen (falls nicht vorhanden)
-        // Achtung: Hier wird synchron/awaited ausgeführt — sicherstellen, dass CreateTable async ist
-        using (var scope = app.Services.CreateScope())
-        {
-            ICategoryRepository CategoryRepo = scope.ServiceProvider.GetRequiredService<ICategoryRepository>();
-            IOllamaEmailDtoRepository OllamaEmailRepo = scope.ServiceProvider.GetRequiredService<IOllamaEmailDtoRepository>();
-            // Wenn Methode CreateTable async heißt: await repo.CreateTable();
-            // Beispiel:
-            await CategoryRepo.CreateTable();
-            await OllamaEmailRepo.CreateTable();
-        }
 
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
@@ -86,17 +74,20 @@ BEGIN
     CREATE DATABASE [{dbName}]
     ON PRIMARY (NAME = N'{dbName}_Data', FILENAME = N'{mdf}')
     LOG ON (NAME = N'{dbName}_Log', FILENAME = N'{ldf}');
+    SELECT 1; -- neu erstellt
 END
 ELSE
 BEGIN
-    PRINT N'Datenbank {dbName} existiert bereits.';
+    SELECT 0; -- existierte bereits
 END;";
 
             using var cmd = masterConn.CreateCommand();
             cmd.CommandText = checkAndCreate;
             cmd.CommandTimeout = 600;
             Console.WriteLine($"Erstelle Datenbank '{dbName}' auf Instanz '{instance}'...");
-            await cmd.ExecuteNonQueryAsync();
+            var resultObj = await cmd.ExecuteScalarAsync();
+            int result = resultObj is int i ? i : -1;
+            Console.WriteLine(result == 1 ? "Datenbank neu erstellt." : result == 0 ? "Datenbank existierte bereits." : $"Unbekanntes Ergebnis: {result}");
             Console.WriteLine("Fertig.");
             await masterConn.CloseAsync();
         }
@@ -108,6 +99,19 @@ END;";
         {
             Console.Error.WriteLine($"Fehler: {ex.Message}");
         }
+
+        // Beim Start: Tabelle anlegen (falls nicht vorhanden)
+        // Achtung: Hier wird synchron/awaited ausgeführt — sicherstellen, dass CreateTable async ist
+        using (var scope = app.Services.CreateScope())
+        {
+            ICategoryRepository CategoryRepo = scope.ServiceProvider.GetRequiredService<ICategoryRepository>();
+            IOllamaEmailDtoRepository OllamaEmailRepo = scope.ServiceProvider.GetRequiredService<IOllamaEmailDtoRepository>();
+            // Wenn Methode CreateTable async heißt: await repo.CreateTable();
+            // Beispiel:
+            await CategoryRepo.CreateTable();
+            await OllamaEmailRepo.CreateTable();
+        }
+
         #endregion
         app.Run();
     }

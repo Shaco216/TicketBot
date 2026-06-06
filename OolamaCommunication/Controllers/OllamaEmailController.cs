@@ -70,7 +70,11 @@ public class OllamaEmailController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        await _emailRepo.DeleteAsync(id);
+        bool success = await _emailRepo.DeleteAsync(id);
+        if (!success)
+        {
+            return NotFound();
+        }
         return NoContent();
     }
 }
