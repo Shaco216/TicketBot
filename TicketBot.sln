@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OolamaCommunication", "Oola
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OolamaService", "OolamaService\OolamaService.csproj", "{9708CFDB-3AB0-41D3-83C1-2E7E443F182C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClientTicketBot", "ClientTicketBot\ClientTicketBot.csproj", "{C16E83B6-D02B-40BD-9CC8-4600AA9AF4BC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{9708CFDB-3AB0-41D3-83C1-2E7E443F182C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9708CFDB-3AB0-41D3-83C1-2E7E443F182C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9708CFDB-3AB0-41D3-83C1-2E7E443F182C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C16E83B6-D02B-40BD-9CC8-4600AA9AF4BC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C16E83B6-D02B-40BD-9CC8-4600AA9AF4BC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C16E83B6-D02B-40BD-9CC8-4600AA9AF4BC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C16E83B6-D02B-40BD-9CC8-4600AA9AF4BC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,0 +1,26 @@
+﻿<Window x:Class="ClientTicketBot.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:ClientTicketBot"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="250" Width="600">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,10">
+            <TextBlock Text="Verfügbaren User:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <ComboBox x:Name="UsersComboBox" Width="350" SelectionChanged="UsersComboBox_SelectionChanged"
+                      DisplayMemberPath="DisplayName" SelectedValuePath="Id"/>
+        </StackPanel>
+
+        <Button x:Name="RefreshButton" Grid.Row="1" Width="120" Content="Aktualisieren" Click="RefreshButton_Click"/>
+
+        <TextBlock x:Name="StatusTextBlock" Grid.Row="2" TextWrapping="Wrap" Margin="0,10,0,0"/>
+    </Grid>
+</Window>
