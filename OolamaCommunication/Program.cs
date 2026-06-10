@@ -1,8 +1,15 @@
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
 using OolamaCommunication.Repositories;
 using System.Data;
 using OolamaCommunication.Services;
+using System.Net;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using OolamaCommunication.Erweiterungen;
 
+namespace OolamaCommunication;
 internal class Program
 {
     private static async Task Main(string[] args)
@@ -30,6 +37,32 @@ internal class Program
         // Registriere den Kategorizer (stellt sicher, dass ICategoryRepository injiziert wird)
         // Wenn OllamaService ebenfalls per AddOllamaServiceFromConfig registriert ist, wird es injiziert.
         builder.Services.AddScoped<IOllamaTicketCategorizer, OllamaTicketCategorizer>();
+
+        // ---------- Dynamische Bindung: IP und Gerätename ----------
+        // Optional per Umgebungsvariable setzen (z. B. BIND_HOST=my-host.local)
+        var bindHost = Environment.GetEnvironmentVariable("BIND_HOST");
+        var bindPort = int.TryParse(Environment.GetEnvironmentVariable("BIND_PORT"), out var p) ? p : 5000;
+
+
+        var candidateAddresses = GetCandidateIPv4Addresses(bindHost).ToList();
+
+        if (candidateAddresses.Any())
+        {
+            builder.WebHost.ConfigureKestrel(options =>
+            {
+                // Binde an alle eindeutigen gefundene IPs
+                foreach (var ip in candidateAddresses)
+                {
+                    options.Listen(ip, bindPort);
+                }
+            });
+        }
+        else
+        {
+            // Fallback: an alle Interfaces binden
+            builder.WebHost.UseUrls($"http://0.0.0.0:{bindPort}");
+        }
+        // ----------------------------------------------------------
 
         var app = builder.Build();
 
@@ -101,18 +134,115 @@ END;";
         }
 
         // Beim Start: Tabelle anlegen (falls nicht vorhanden)
-        // Achtung: Hier wird synchron/awaited ausgef�hrt � sicherstellen, dass CreateTable async ist
+        // Achtung: Hier wird synchron/awaited ausgef�hrt � sicherstellen, dass CreateTable async ist
         using (var scope = app.Services.CreateScope())
         {
             ICategoryRepository CategoryRepo = scope.ServiceProvider.GetRequiredService<ICategoryRepository>();
             IOllamaEmailDtoRepository OllamaEmailRepo = scope.ServiceProvider.GetRequiredService<IOllamaEmailDtoRepository>();
-            // Wenn Methode CreateTable async hei�t: await repo.CreateTable();
+            // Wenn Methode CreateTable async hei�t: await repo.CreateTable();
             // Beispiel:
             await CategoryRepo.CreateTable();
             await OllamaEmailRepo.CreateTable();
         }
 
         #endregion
-        app.Run();
+
+        // Start & Logging der tatsächlich gebundenen Adressen
+        await app.StartAsync();
+        var addresses = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()?.Addresses;
+        var bound = addresses != null ? string.Join(", ", addresses) : "(keine Adressen verfügbar)";
+        app.Logger.LogInformation("Kestrel bound to: {bound}", bound);
+
+        await app.WaitForShutdownAsync();
     }
+
+    #region ZusatzMethoden
+    /// <summary>
+    /// ermittelt eine sinnvolle lokale IPv4-Adresse oder null
+    /// </summary>
+    /// <returns>current IP Address</returns>
+    static IPAddress? GetLocalIPv4Address()
+    {
+        foreach (var ni in NetworkInterface.GetAllNetworkInterfaces()
+                     .Where(n => n.OperationalStatus == OperationalStatus.Up &&
+                                 n.NetworkInterfaceType != NetworkInterfaceType.Loopback))
+        {
+            var props = ni.GetIPProperties();
+            foreach (var ua in props.UnicastAddresses)
+            {
+                if (ua.Address.AddressFamily == AddressFamily.InterNetwork)
+                {
+                    var ip = ua.Address;
+                    // optional: Filter für Link-Local / APIPA
+                    if (!ip.ToString().StartsWith("169.254")) return ip;
+                }
+            }
+        }
+        return null;
+    }
+
+    static IEnumerable<IPAddress> GetCandidateIPv4Addresses(string? preferredHost)
+    {
+        var found = new List<IPAddress>();
+
+        // 1) Wenn ein BIND_HOST gesetzt ist: versuche Auflösung
+        if (!string.IsNullOrWhiteSpace(preferredHost))
+        {
+            try
+            {
+                var addrs = Dns.GetHostAddresses(preferredHost)
+                               .Where(a => a.AddressFamily == AddressFamily.InterNetwork);
+                found.AddRange(addrs);
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        // 2) Hostname des Geräts auflösen (Gerätename)
+        try
+        {
+            var hostName = Dns.GetHostName();
+            var hostAddrs = Dns.GetHostAddresses(hostName)
+                               .Where(a => a.AddressFamily == AddressFamily.InterNetwork);
+            found.AddRange(hostAddrs);
+        }
+        catch
+        {
+            // ignore
+        }
+
+        // 3) Netzwerkschnittstellen nach aktiven IPv4-Adressen durchsuchen
+        try
+        {
+            foreach (var ni in NetworkInterface.GetAllNetworkInterfaces()
+                         .Where(n => n.OperationalStatus == OperationalStatus.Up &&
+                                     n.NetworkInterfaceType != NetworkInterfaceType.Loopback))
+            {
+                var props = ni.GetIPProperties();
+                foreach (var ua in props.UnicastAddresses)
+                {
+                    if (ua.Address.AddressFamily == AddressFamily.InterNetwork)
+                    {
+                        var ip = ua.Address;
+                        // Filter: keine APIPA (169.254.x.x)
+                        if (!ip.ToString().StartsWith("169.254"))
+                            found.Add(ip);
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // ignore
+        }
+
+        // Deduplicate und keine Loopback-Adresse zurückgeben
+        return found
+            .Where(a => !IPAddress.IsLoopback(a))
+            .Distinct(new IPAddressComparer());
+    }
+    #endregion
+
 }
