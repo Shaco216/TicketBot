@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:TicketBot"
-        Title="Modell auswählen" Height="350" Width="400" WindowStartupLocation="CenterScreen">
+        Title="Modell auswählen" Height="420" Width="400" WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <local:BoolToBrushConverter x:Key="BoolToBrushConverter"/>
         <local:InstalledTextConverter x:Key="InstalledTextConverter"/>
@@ -11,6 +11,9 @@
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <!-- Suche -->
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -21,7 +24,18 @@
             <TextBlock x:Name="TxtStatus" FontSize="11" Foreground="Gray" Text="Status: Unbekannt" />
         </StackPanel>
 
-        <ListBox x:Name="LstModels" Grid.Row="1" Margin="0,0,0,8" SelectionMode="Single">
+        <!-- Endpoint Auswahl -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8" VerticalAlignment="Center">
+            <RadioButton x:Name="RbLocalhost" Content="Localhost" IsChecked="True" Checked="EndpointOptionChanged" Margin="0,0,8,0"/>
+            <RadioButton x:Name="RbCustom" Content="Custom" Checked="EndpointOptionChanged" Margin="0,0,8,0"/>
+            <TextBox x:Name="TxtEndpoint" Width="220" Height="24" VerticalContentAlignment="Center" Margin="6,0,0,0" IsEnabled="{Binding IsChecked, ElementName=RbCustom}" />
+            <Button Content="Test/Aktualisieren" Click="BtnTestEndpoint_Click" Margin="6,0,0,0" />
+        </StackPanel>
+
+        <!-- Suche -->
+        <Button Grid.Row="2" HorizontalAlignment="Center" Margin="0,0,0,5" x:Name="BtnSearch" Content="Suche" Width="90" Click="BtnSearch_Click"/>
+
+        <ListBox x:Name="LstModels" Grid.Row="3" Margin="0,0,0,8" SelectionMode="Single">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <StackPanel Orientation="Horizontal" Margin="4">
@@ -35,7 +49,7 @@
             </ListBox.ItemTemplate>
         </ListBox>
 
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,0,0,8">
             <Grid>
                 <TextBox x:Name="TxtCustomModel" Width="240" Height="26" VerticalContentAlignment="Center" Margin="0,0,8,0"/>
                 <TextBlock Text="Eigenes Modell eingeben..." 
@@ -48,7 +62,7 @@
             <Button Content="Als Auswahl" Width="100" Click="BtnUseCustom_Click"/>
         </StackPanel>
 
-        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Abbrechen" Width="90" Margin="0,0,8,0" Click="BtnCancel_Click"/>
             <Button x:Name="BtnInstall" Content="Installieren" Width="90" Margin="0,0,8,0" Click="BtnInstall_Click"
                     Visibility="{Binding SelectedItem.Installed, ElementName=LstModels, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}"
