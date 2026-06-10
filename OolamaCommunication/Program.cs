@@ -8,6 +8,7 @@ using System.Net.Sockets;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using OolamaCommunication.Erweiterungen;
+using Microsoft.OpenApi.Models;
 
 namespace OolamaCommunication;
 internal class Program
@@ -69,11 +70,20 @@ internal class Program
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
         {
-            app.UseSwagger();
+            // Swagger JSON so anpassen, dass "servers" dynamisch auf die aktuelle Host:Port Kombination gesetzt wird
+            app.UseSwagger(c =>
+            {
+                c.PreSerializeFilters.Add((swaggerDoc, httpReq) =>
+                {
+                    var serverUrl = $"{httpReq.Scheme}://{httpReq.Host.Value}";
+                    swaggerDoc.Servers = new List<OpenApiServer> { new OpenApiServer { Url = serverUrl } };
+                });
+            });
+
             app.UseSwaggerUI();
         }
 
-        app.UseHttpsRedirection();
+        //app.UseHttpsRedirection();
 
         app.UseAuthorization();
 
